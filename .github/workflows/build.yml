@@ -10,29 +10,37 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install Java
+      - name: Setup Java
         uses: actions/setup-java@v3
         with:
           distribution: temurin
           java-version: 17
 
-      - name: Install Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Accept Licenses
-        run: yes | sdkmanager --licenses
-
-      - name: Install Build Tools
+      - name: Accept Android Licenses
         run: |
-          sdkmanager "platform-tools"
-          sdkmanager "platforms;android-33"
-          sdkmanager "build-tools;33.0.2"
-          sdkmanager "build-tools;37.0.0"
+          yes | sdkmanager --licenses || true
+
+      - name: Install Android Build Tools
+        run: |
+          sdkmanager --install "platform-tools"
+          sdkmanager --install "platforms;android-33"
+          sdkmanager --install "build-tools;33.0.2"
+          sdkmanager --install "build-tools;37.0.0"
+
+      - name: Verify AIDL
+        run: |
+          find $ANDROID_SDK_ROOT -name aidl || true
 
       - name: Build APK
         uses: digreatbrian/buildozer-action@v1
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
         with:
           workdir: .
           buildozer-cmd: buildozer android debug
