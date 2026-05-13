@@ -2,8 +2,6 @@ name: Android APK Build
 
 on:
   push:
-    branches:
-      - main
 
 jobs:
   build:
@@ -17,7 +15,10 @@ jobs:
         uses: digreatbrian/buildozer-action@v1
         with:
           workdir: .
-          buildozer_version: stable
+          buildozer-cmd: buildozer android debug
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ACCEPT_SDK_LICENSE: "true"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
