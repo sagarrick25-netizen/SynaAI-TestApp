@@ -2,6 +2,8 @@ name: Android APK Build
 
 on:
   push:
+    branches:
+      - main
 
 jobs:
   build:
@@ -11,14 +13,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build with Buildozer
+      - name: Accept Android Licenses
+        run: yes | sdkmanager --licenses || true
+
+      - name: Build APK
         uses: digreatbrian/buildozer-action@v1
         with:
           workdir: .
           buildozer-cmd: buildozer android debug
-        env:
-          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-          ACCEPT_SDK_LICENSE: "true"
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
