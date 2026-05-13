@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Android APK Build
 
 on:
   push:
@@ -10,16 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build APK
-        uses: ArtemSBulgakov/buildozer-action@v1
+      - name: Build with Buildozer
+        uses: digreatbrian/buildozer-action@v1
         with:
-          command: buildozer android debug
+          workdir: .
+          buildozer_version: stable
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: SynaAI-APK
+          name: android-apk
           path: bin/*.apk
