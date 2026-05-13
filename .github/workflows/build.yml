@@ -29,6 +29,7 @@ jobs:
           sdkmanager "platform-tools"
           sdkmanager "platforms;android-33"
           sdkmanager "build-tools;33.0.2"
+          sdkmanager "build-tools;37.0.0"
 
       - name: Build APK
         uses: digreatbrian/buildozer-action@v1
