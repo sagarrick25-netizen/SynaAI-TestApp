@@ -14,7 +14,8 @@ requirements = python3,kivy,pyjnius
 orientation = portrait
 fullscreen = 0
 
-android.permissions = WRITE_SETTINGS,MODIFY_AUDIO_SETTINGS
+# IMPORTANT PERMISSIONS
+android.permissions = QUERY_ALL_PACKAGES,WRITE_SETTINGS,MODIFY_AUDIO_SETTINGS
 
 # Stable Android config
 android.api = 33
@@ -30,6 +31,14 @@ p4a.branch = master
 
 # Prevent problematic AndroidX auto-updates
 android.enable_androidx = False
+
+# Allow visibility of installed launcher apps (ANDROID 11+ FIX)
+android.manifest.queries = <queries>
+    <intent>
+        <action android:name="android.intent.action.MAIN" />
+        <category android:name="android.intent.category.LAUNCHER" />
+    </intent>
+</queries>
 
 # App appearance
 presplash_color = #111111
