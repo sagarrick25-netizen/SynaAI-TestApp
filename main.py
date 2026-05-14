@@ -107,7 +107,7 @@ def _request_write_settings():
 
 
 # ─────────────────────────────────────────────────────────────
-#  1.  APP LAUNCHER
+#  1.  APP LAUNCHER  (UPDATED – Android 11+ visibility fix)
 # ─────────────────────────────────────────────────────────────
 APP_PACKAGES = {
     "youtube":   "com.google.android.youtube",
@@ -123,25 +123,70 @@ APP_PACKAGES = {
 }
 
 def open_app(app_name: str):
-    """Launch an installed Android app by friendly name or package name."""
+    """Launch an installed Android app by friendly name or package name.
+    
+    Works on Android 11+ where default package visibility may hide other apps.
+    Uses two strategies:
+      1. getLaunchIntentForPackage (fast, works if app is visible)
+      2. queryIntentActivities (searches for launcher intents, more robust)
+    """
     if not IS_ANDROID or not JNIUS_OK:
         log(f"open_app('{app_name}') — not on Android, skipping.", "WARN")
         return
+
     try:
-        ctx          = _get_context()
-        pkg_manager  = ctx.getPackageManager()
-        Intent       = autoclass("android.content.Intent")
+        ctx = _get_context()
+        pkg_manager = ctx.getPackageManager()
+        Intent = autoclass('android.content.Intent')
+        ComponentName = autoclass('android.content.ComponentName')
 
         key = app_name.strip().lower()
-        package = APP_PACKAGES.get(key, app_name.strip())   # fallback: treat input as package
+        package = APP_PACKAGES.get(key, app_name.strip())  # fallback: raw package name
 
+        # ---- Strategy 1: standard launch intent ---------------------------------
         launch_intent = pkg_manager.getLaunchIntentForPackage(package)
-        if launch_intent is None:
-            log(f"App not found: '{app_name}' (tried package '{package}')", "ERROR")
+        if launch_intent:
+            launch_intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            ctx.startActivity(launch_intent)
+            log(f"Launched (direct): {app_name} ({package})", "INFO")
             return
-        launch_intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(launch_intent)
-        log(f"Launched: {app_name} ({package})", "INFO")
+
+        # ---- Strategy 2: query all activities that can be launched --------------
+        main_intent = Intent(Intent.ACTION_MAIN)
+        main_intent.addCategory(Intent.CATEGORY_LAUNCHER)
+
+        # Use MATCH_ALL to avoid filtering on Android 11+
+        try:
+            MATCH_ALL = getattr(pkg_manager, 'MATCH_ALL', None)
+            if MATCH_ALL is None:
+                MATCH_ALL = 0x00040000  # MATCH_ALL flag value (int)
+            resolve_info_list = pkg_manager.queryIntentActivities(
+                main_intent, MATCH_ALL
+            )
+        except Exception:
+            # Older devices: fallback to flag 0
+            resolve_info_list = pkg_manager.queryIntentActivities(main_intent, 0)
+
+        # Scan results for an activity that belongs to the target package
+        if resolve_info_list:
+            for ri in resolve_info_list:
+                activity_info = ri.activityInfo
+                if activity_info.packageName == package:
+                    # Build an explicit intent for that activity
+                    component = ComponentName(
+                        activity_info.packageName,
+                        activity_info.name
+                    )
+                    explicit_intent = Intent()
+                    explicit_intent.setComponent(component)
+                    explicit_intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    ctx.startActivity(explicit_intent)
+                    log(f"Launched (via query): {app_name} ({package})", "INFO")
+                    return
+
+        # ---- If we get here, the app is truly not installed --------------------
+        log(f"App not found: '{app_name}' (tried package '{package}')", "ERROR")
+
     except Exception as e:
         log(f"open_app error: {e}", "ERROR")
 
