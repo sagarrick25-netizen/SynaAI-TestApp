@@ -31,7 +31,6 @@ jobs:
           sdkmanager --install "platform-tools"
           sdkmanager --install "platforms;android-33"
           sdkmanager --install "build-tools;33.0.2"
-          sdkmanager --install "build-tools;37.0.0"
 
       - name: Verify AIDL
         run: |
