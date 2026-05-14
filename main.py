@@ -81,9 +81,15 @@ def _get_window_manager():
     return ctx.getSystemService("window")
 
 def _settings_can_write():
-    Settings = autoclass("android.provider.Settings")
-    ctx = _get_context()
-    return Settings.System.canWrite(ctx)
+    """Check if WRITE_SETTINGS permission is granted."""
+    try:
+        # Load the nested System class with the proper $ syntax
+        SystemSettings = autoclass("android.provider.Settings$System")
+        ctx = _get_context()
+        return SystemSettings.canWrite(ctx)
+    except Exception as e:
+        log(f"Permission check failed: {e}", "ERROR")
+        return False
 
 def _request_write_settings():
     try:
@@ -207,7 +213,7 @@ def mute_volume_silent():
 
 
 # ─────────────────────────────────────────────────────────────
-#  3.  BRIGHTNESS CONTROL
+#  3.  BRIGHTNESS CONTROL  (FIXED – nested class access)
 # ─────────────────────────────────────────────────────────────
 def _set_brightness(value: int):
     """
@@ -217,23 +223,28 @@ def _set_brightness(value: int):
     if not IS_ANDROID or not JNIUS_OK:
         log(f"set_brightness({value}) — not on Android.", "WARN"); return
     try:
-        Settings = autoclass("android.provider.Settings")
+        # Load the nested System class (the FIX)
+        SystemSettings = autoclass("android.provider.Settings$System")
+
         if not _settings_can_write():
             log("WRITE_SETTINGS permission needed — opening settings page.", "WARN")
             _request_write_settings()
             return
         ctx      = _get_context()
         resolver = ctx.getContentResolver()
-        Settings.System.putInt(
+
+        # Switch to manual mode and set brightness
+        SystemSettings.putInt(
             resolver,
-            Settings.System.SCREEN_BRIGHTNESS_MODE,
-            Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL
+            SystemSettings.SCREEN_BRIGHTNESS_MODE,
+            SystemSettings.SCREEN_BRIGHTNESS_MODE_MANUAL
         )
-        Settings.System.putInt(
+        SystemSettings.putInt(
             resolver,
-            Settings.System.SCREEN_BRIGHTNESS,
+            SystemSettings.SCREEN_BRIGHTNESS,
             max(0, min(255, value))
         )
+
         # Apply to current window as well
         WindowManager = autoclass("android.view.WindowManager")
         LayoutParams  = autoclass("android.view.WindowManager$LayoutParams")
@@ -250,10 +261,10 @@ def brightness_up():
     if not IS_ANDROID or not JNIUS_OK:
         log("brightness_up — not on Android.", "WARN"); return
     try:
-        Settings = autoclass("android.provider.Settings")
+        SystemSettings = autoclass("android.provider.Settings$System")
         ctx      = _get_context()
         resolver = ctx.getContentResolver()
-        current  = Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS, 128)
+        current  = SystemSettings.getInt(resolver, SystemSettings.SCREEN_BRIGHTNESS, 128)
         _set_brightness(min(255, current + 25))
     except Exception as e:
         log(f"brightness_up error: {e}", "ERROR")
@@ -262,10 +273,10 @@ def brightness_down():
     if not IS_ANDROID or not JNIUS_OK:
         log("brightness_down — not on Android.", "WARN"); return
     try:
-        Settings = autoclass("android.provider.Settings")
+        SystemSettings = autoclass("android.provider.Settings$System")
         ctx      = _get_context()
         resolver = ctx.getContentResolver()
-        current  = Settings.System.getInt(resolver, Settings.System.SCREEN_BRIGHTNESS, 128)
+        current  = SystemSettings.getInt(resolver, SystemSettings.SCREEN_BRIGHTNESS, 128)
         _set_brightness(max(10, current - 25))
     except Exception as e:
         log(f"brightness_down error: {e}", "ERROR")
